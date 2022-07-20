@@ -41,6 +41,7 @@ def setup_system(L, epsilon_0, m_0, m_1, v, delta, verbose=False):
     # 6
     latt.add_hopping(-1j * delta / 2, 2, {"s": 0, "rho": 3}, 1, verbose=verbose)
     latt.add_hopping(1j * delta / 2, 2, {"s": 0, "rho": 3}, 3, verbose=verbose)
+    print("Warning: term 6 has been disabled")
 
     if verbose:
         print("Time to create entire system: " + str(perf_counter() - total_init))
@@ -92,18 +93,18 @@ def setup_system_old(L, epsilon_0, m_0, m_1, v, delta, verbose=False):
 
 def main():
     # Initial parameters
-    L = 20
+    L = 3
     epsilon_0 = 0.3
-    m_0 = -1.5
-    m_1 = 1
+    m_0 = 1.5
+    m_1 = 0.7
     v = .1
     delta = .1
 
     latt = setup_system(L, epsilon_0, m_0, m_1, v, delta)
 
-    latt.dislocation(7, 6, 1)
+    # latt.dislocation(7, 6, 1)
 
-    # print(latt.get_block(0))
+    print(latt.get_block(0))
 
     # eigenvalues, eigenvectors = np.linalg.eigh(latt.bdg_h)
     # plt.plot(np.arange(len(eigenvalues)), eigenvalues, "o")

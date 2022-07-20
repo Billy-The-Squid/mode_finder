@@ -267,26 +267,6 @@ class Lattice:
         if verbose:
             print("Time to calculate all eigenvalues: " + str(perf_counter() - init))
 
-    # def calculate_eigenvalues_sparse(self, count, verbose=False):
-    #     """
-    #
-    #     :param count:
-    #     :param verbose:
-    #     :return:
-    #     """
-    #     if count >= self.bdg_h.shape[0] - 1:
-    #         self.calculate_eigenvalues()
-    #         return
-    #     init = perf_counter()
-    #     if self._eigen_up_to_date is False or self._eigen_up_to_date < count:
-    #         vals, vecs = eigsh(self.bdg_h, k=count, sigma=0, which="LM")
-    #         indices = np.argsort(vals ** 2)
-    #         self.eigenvalues = vals[indices]
-    #         self.eigenvectors = vecs[:, indices]
-    #         self._eigen_up_to_date = count
-    #     if verbose:
-    #         print("Time to calculate some eigenvalues: " + str(perf_counter() - init))
-
     def calculate_eigenvalues_sparse(self, count, verbose=False):
         """
 
@@ -445,26 +425,6 @@ class Lattice:
                 self.bdg_h[side0_i[dest]:(side0_i[dest] + self._options_per_site),
                 side1_i[source]:(side1_i[source] + self._options_per_site)] = to_term_1.copy()  # Stitch the gap
         print("Number of sites removed: " + str(self.removed_site_count))
-
-    # def remove_point(self, x, y):
-    #     """
-    #     Removes the point at the given coordinates, including all hopping terms to and from it.
-    #     :param x:
-    #     :param y:
-    #     :return:
-    #     """
-    #     # An important dictionary we'll need.
-    #     init = self.dofs_dict.copy()
-    #     for dof in self.dofs:
-    #         init[dof] = 0
-    #     start_i = [
-    #         self.get_index(x, y, init, particle=True),
-    #         self.get_index(x, y, init, particle=False)
-    #     ]
-    #
-    #     # for part in [0, 1]:
-    #     #     # Remove the columns
-    #     #     self.bdg_h[:, start_i[part]:(start_i[part])]
 
 
 def main():
