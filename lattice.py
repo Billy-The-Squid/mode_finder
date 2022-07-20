@@ -2,7 +2,7 @@ import numpy
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.sparse.linalg import eigsh
-from scipy.linalg import eig
+import scipy.sparse as spr
 from time import perf_counter
 
 paulis = [
@@ -266,25 +266,48 @@ class Lattice:
         if verbose:
             print("Time to calculate all eigenvalues: " + str(perf_counter() - init))
 
+    # def calculate_eigenvalues_sparse(self, count, verbose=False):
+    #     """
+    #
+    #     :param count:
+    #     :param verbose:
+    #     :return:
+    #     """
+    #     if count >= self.bdg_h.shape[0] - 1:
+    #         self.calculate_eigenvalues()
+    #         return
+    #     init = perf_counter()
+    #     if self._eigen_up_to_date is False or self._eigen_up_to_date < count:
+    #         vals, vecs = eigsh(self.bdg_h, k=count, sigma=0, which="LM")
+    #         indices = np.argsort(vals ** 2)
+    #         self.eigenvalues = vals[indices]
+    #         self.eigenvectors = vecs[:, indices]
+    #         self._eigen_up_to_date = count
+    #     if verbose:
+    #         print("Time to calculate some eigenvalues: " + str(perf_counter() - init))
+
     def calculate_eigenvalues_sparse(self, count, verbose=False):
         """
 
-        :param count:
-        :param verbose:
-        :return:
         """
         if count >= self.bdg_h.shape[0] - 1:
             self.calculate_eigenvalues()
             return
         init = perf_counter()
         if self._eigen_up_to_date is False or self._eigen_up_to_date < count:
-            vals, vecs = eigsh(self.bdg_h, k=count, sigma=0, which="LM")
+            sparse_mat = spr.csr_matrix(self.bdg_h)
+            if verbose:
+                print("Time to generate sparse matrix: " + str(perf_counter() - init))
+                next = perf_counter()
+            vals, vecs = eigsh(sparse_mat, k=count, sigma=0, which="LM")
+            if verbose:
+                print("Time to find some eigenvalues: " + str(perf_counter() - next))
             indices = np.argsort(vals ** 2)
             self.eigenvalues = vals[indices]
             self.eigenvectors = vecs[:, indices]
             self._eigen_up_to_date = count
         if verbose:
-            print("Time to calculate some eigenvalues: " + str(perf_counter() - init))
+            print("Total time to calculate some eigenvalues: " + str(perf_counter() - init))
 
     def plot_eigenvector(self, index, color=False):
         """
