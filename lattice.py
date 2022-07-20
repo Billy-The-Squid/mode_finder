@@ -54,7 +54,7 @@ class Lattice:
         self._eigen_up_to_date = False
         self.removed_site_count = 0
 
-    def get_index(self, x: int, y: int, dofs: dict[str, int], particle=True):
+    def get_index(self, x: int, y: int, dofs: dict, particle=True):
         """
         Returns the integer index of the specified site with the specified degree of freedom. (x,y) = (0,0) is in a
             corner.
