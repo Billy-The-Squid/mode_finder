@@ -53,6 +53,7 @@ class Lattice:
         self.eigenvalues = None
         self._eigen_up_to_date = False
         self.removed_site_count = 0
+        self.sparse_h = None
 
     def get_index(self, x: int, y: int, dofs: dict, particle=True):
         """
@@ -295,11 +296,12 @@ class Lattice:
             return
         init = perf_counter()
         if self._eigen_up_to_date is False or self._eigen_up_to_date < count:
-            sparse_mat = spr.csr_matrix(self.bdg_h)
+            if self.sparse_h is None:
+                self.sparse_h = spr.csr_matrix(self.bdg_h)
             if verbose:
                 print("Time to generate sparse matrix: " + str(perf_counter() - init))
                 next = perf_counter()
-            vals, vecs = eigsh(sparse_mat, k=count, sigma=0, which="LM")
+            vals, vecs = eigsh(self.sparse_h, k=count, sigma=0, which="LM")
             if verbose:
                 print("Time to find some eigenvalues: " + str(perf_counter() - next))
             indices = np.argsort(vals ** 2)
