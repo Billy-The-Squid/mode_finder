@@ -140,7 +140,7 @@ class Lattice:
                     site_i[source]:(site_i[source] + self._options_per_site)] += \
                         on_site_term.copy() * ph_p_mat[dest, source]
         if verbose:
-            print("Time to add diagonal: " + str(perf_counter() - start_t))
+            print("Time to add hopping term: " + str(perf_counter() - start_t))
 
     def add_hopping_old(self, term, pauli_index, pauli_indices, direction, verbose=False):
         """
@@ -264,7 +264,7 @@ class Lattice:
             self.eigenvectors = vecs[:, indices]
             self._eigen_up_to_date = True
         if verbose:
-            print("Time to calculate some eigenvalues: " + str(perf_counter() - init))
+            print("Time to calculate all eigenvalues: " + str(perf_counter() - init))
 
     def calculate_eigenvalues_sparse(self, count, verbose=False):
         """
@@ -313,7 +313,7 @@ class Lattice:
         plt.colorbar()
         plt.show()
 
-    def dislocation(self, x_start, y_start, direc):
+    def dislocation(self, x_start, y_start, direc, site_cost=0):
         """
         Creates a dislocation starting at the specified point and continuing in the specified direction by removing the
             sites from that site and continuing in that direction. The sites on either side of the missing sites will
@@ -373,12 +373,18 @@ class Lattice:
                 self.get_index(neighbor2[0], neighbor2[1], init, particle=False)
             ]
 
+            # Remove on-site terms
+            for i in range(2):
+                self.bdg_h[start_i[i]:(start_i[i] + self._options_per_site),
+                start_i[i]:(start_i[i] + self._options_per_site)] = \
+                    site_cost * np.identity(self._options_per_site, dtype=np.complex64)
+
             # Iterate through each of the four blocks in the BdG Hamiltonian
             for dest, source in [(0, 0), (1, 0), (0, 1), (1, 1)]:
-                # Remove the on-site terms
-                self.bdg_h[start_i[dest]:(start_i[dest] + self._options_per_site),
-                start_i[source]:(start_i[source] + self._options_per_site)] = \
-                    np.zeros((self._options_per_site, self._options_per_site), dtype=complex)
+                # # Remove the on-site terms
+                # self.bdg_h[start_i[dest]:(start_i[dest] + self._options_per_site),
+                # start_i[source]:(start_i[source] + self._options_per_site)] = \
+                #     site_cost * np.identity(self._options_per_site, dtype=np.complex64)
 
                 # Remove hopping terms between removed sites
                 self.bdg_h[start_i[dest]:(start_i[dest] + self._options_per_site),
@@ -439,22 +445,18 @@ class Lattice:
 def main():
     """Runs a test"""
     # Initialize the system
-    L = 10
+    L = 3
     dofs = {"sub": ("A", "B")}
     latt = Lattice(L, dofs)
 
     # # Add an on-site term
-    latt.add_diagonal_old(-2, 3, {"sub": 1})
-    latt.add_diagonal_old(-2, 1, {"sub": 0})
+    latt.add_diagonal(-2, 3, {"sub": 1})
 
     # Add a hopping term
-    latt.add_hopping_old(1j, 1, {"sub": 0}, 0)
-    latt.add_hopping_old(-1j, 1, {"sub": 0}, 2)
+    latt.add_hopping(1j, 0, {"sub": 0}, 0)
+    latt.dislocation(1, 1, 0, site_cost=10)
 
-    # latt.dislocation(1, 1, 0)
-
-    # print(latt.bdg_h)
-    # print(latt.get_block(0))
+    latt.calculate_eigenvalues()
 
     latt.plot_eigenvector(10, color=True)
 
@@ -472,4 +474,4 @@ def main2():
 
 
 if __name__ == "__main__":
-    main2()
+    main()
