@@ -7,7 +7,7 @@ import matplotlib.ticker as tck
 L = 50
 epsilon_0 = 0.3
 m_0 = 1.5
-m_1 = -1
+m_1 = -0.7
 v = 0.1
 delta = 0.1
 

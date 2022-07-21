@@ -54,6 +54,7 @@ class Lattice:
         self._eigen_up_to_date = False
         self.removed_site_count = 0
         self.sparse_h = None
+        self._site_costs = []
 
     def get_index(self, x: int, y: int, dofs: dict, particle=True):
         """
@@ -297,7 +298,8 @@ class Lattice:
         :param index: The index of the eigenvector in lattice.eigenvectors.
         """
         if self._eigen_up_to_date is False or self._eigen_up_to_date < index:
-            self.calculate_eigenvalues()
+            print("Eigenvectors have not been computed to this index.")
+            return
         xs = np.arange(self.L)
         ys = np.arange(self.L)
         xx, yy = np.meshgrid(xs, ys)
@@ -318,7 +320,7 @@ class Lattice:
         plt.colorbar()
         plt.show()
 
-    def dislocation(self, x_start, y_start, direc, site_cost=0):
+    def dislocation(self, x_start, y_start, direc, site_cost=10):
         """
         Creates a dislocation starting at the specified point and continuing in the specified direction by removing the
             sites from that site and continuing in that direction. The sites on either side of the missing sites will
@@ -425,6 +427,34 @@ class Lattice:
                 self.bdg_h[side0_i[dest]:(side0_i[dest] + self._options_per_site),
                 side1_i[source]:(side1_i[source] + self._options_per_site)] = to_term_1.copy()  # Stitch the gap
         print("Number of sites removed: " + str(self.removed_site_count))
+        self._site_costs.append(site_cost)
+
+    def plot_spectrum(self, lazy=False):
+        if self._eigen_up_to_date is False:
+            print("Eigenvalues have not been computed.")
+            return
+        # Sort the eigenvalues in ascending order
+        spectrum = np.sort(self.eigenvalues)
+        # # Remove the lines at the dislocations
+        # indices = list()
+        # for cost in self._site_costs:
+        #     indices.append(np.searchsorted(spectrum))
+        # spectrum = self.eigenvalues  # [np.where(self.eigenvalues not in self._site_costs)]  # TODO: FIX
+        # Do it lazy
+        if lazy:
+            xs = np.zeros(len(spectrum))
+        else:
+            xs = np.arange(len(spectrum))
+            # zero = np.searchsorted(spectrum, 0)
+            # xs = xs - zero
+        plt.plot(xs, spectrum, ".")
+        plt.axhline(0, color="lightgrey")
+        plt.show()
+
+        # # Do it fancy
+        # indices = np.argsort(self.eigenvalues.real)
+        # vals = self.eigenvalues[indices]
+        # pos = np.where(vals >= 0)[0][0]  # Find the first positive index.
 
 
 def main():
@@ -443,7 +473,8 @@ def main():
 
     latt.calculate_eigenvalues()
 
-    latt.plot_eigenvector(10, color=True)
+    latt.plot_spectrum()
+    # latt.plot_eigenvector(10, color=True)
 
 
 def main2():
