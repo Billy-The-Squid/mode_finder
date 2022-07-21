@@ -26,7 +26,7 @@ def kron(arg_list):
 
 
 class Lattice:
-    def __init__(self, L: int, dofs: dict = None):
+    def __init__(self, L: int, dofs: dict, ribbon_dir=False):
         """
         Creates an empty matrix representing the BdG Hamiltonian (in r-basis) for the system.
         We assume the system is a square 2D lattice.
@@ -35,6 +35,8 @@ class Lattice:
         :param dofs: The degrees of freedom at each site. This should be a dictionary with dof names
             (as strings) mapping to lists of possible values. The dictionary should not be empty and
             each list should have more than one entry.
+        :param ribbon_dir: False to have open boundaries, "x" or "y" for a x-extended/y-extended ribbon geometry,
+            "xy" for closed boundaries
         """
         # Some important variables
         self.L = L
@@ -55,6 +57,7 @@ class Lattice:
         self.removed_site_count = 0
         self.sparse_h = None
         self._site_costs = []
+        self.ribbon_dir = ribbon_dir
 
     def get_index(self, x: int, y: int, dofs: dict, particle=True):
         """
@@ -66,8 +69,12 @@ class Lattice:
         :param particle:
         :return: The integer index of the site specified.
         """
-        if x >= self.L or y >= self.L or x < 0 or y < 0:
-            raise IndexError("x, y indices exceed size of array")
+        if self.ribbon_dir in [False, "y"] and (x < 0 or x >= self.L):
+            raise IndexError("x index exceeds size of array")
+        if self.ribbon_dir in [False, "x"] and (y < 0 or y >= self.L):
+            raise IndexError("y index exceeds size of array")
+        x = x % self.L
+        y = y % self.L
         index = 0
         index += y
         index = index * self.L + x
@@ -94,24 +101,6 @@ class Lattice:
             block_size = block_size / options
             dofs[i] = (index // block_size) % options
         return (x, y), particle, dofs
-
-    def add_diagonal_old(self, term, pauli_index, pauli_indices, verbose=False):
-        """
-        Adds a c_x c_x term to the matrix.
-        :param term: The constant
-        :param pauli_index: 0, 1, 2, or 3: specifies the Pauli matrix to be used for particle-hole interactions. [BETTER
-            DOCS!] 0 uses the identity.
-        :param pauli_indices: A dictionary with the same keys as the dofs attributes, each pointing to either 0, 1, 2,
-            or 3, specifying the matrix associated with this degree of freedom.
-        """
-        start_t = perf_counter()
-        on_site_term = kron([paulis[pauli_indices[dof]] for dof in self.dofs])
-        full = term * kron([paulis[pauli_index], np.identity(self.L * self.L), on_site_term])
-        self.bdg_h += full
-        self._eigen_up_to_date = False
-        np.testing.assert_almost_equal(self.bdg_h.conj().transpose(), self.bdg_h)
-        if verbose:
-            print("Time to add diagonal: " + str(perf_counter() - start_t))
 
     def add_diagonal(self, term, pauli_index, pauli_indices, verbose=False):
         """
@@ -144,7 +133,7 @@ class Lattice:
         if verbose:
             print("Time to add hopping term: " + str(perf_counter() - start_t))
 
-    def add_hopping_old(self, term, pauli_index, pauli_indices, direction, verbose=False):
+    def add_hopping(self, term, pauli_index, pauli_indices, direction, verbose=False, ribbon_dir=False):
         """
         Adds a c_x c_{x+-1} term to the matrix. Preserves Hermiticity but will not add the opposite-direction hopping
             term if pauli_index is 1 or 2.
@@ -152,45 +141,8 @@ class Lattice:
         :param pauli_index:
         :param pauli_indices:
         :param direction: 0 for x->x+1, 1 for y->y+1, 2 for x->x-1, 3 for y->y-1
-        :return: None. Modifies bdg_h directly.
-        """
-        start_t = perf_counter()
-        ad_paulis = [
-            np.array([[1, 0], [0, 1]]),
-            np.array([[0, 1], [0, 0]]),
-            np.array([[0, -1j], [0, 0]]),
-            np.array([[1, 0], [0, -1]])
-        ]
-        on_site_term = kron([paulis[pauli_indices[dof]] for dof in self.dofs])
-        di_1 = term * np.ones(self.L - 1)
-        if direction == 0:
-            y_mat = np.identity(self.L)
-            x_mat = np.diag(di_1, -1)
-        elif direction == 1:
-            x_mat = np.identity(self.L)
-            y_mat = np.diag(di_1, -1)
-        if direction == 2:
-            y_mat = np.identity(self.L)
-            x_mat = np.diag(di_1, 1)
-        elif direction == 3:
-            x_mat = np.identity(self.L)
-            y_mat = np.diag(di_1, 1)
-        half = kron([ad_paulis[pauli_index], y_mat, x_mat, on_site_term])
-        self.bdg_h += half + half.conj().transpose()
-        self._eigen_up_to_date = False
-        np.testing.assert_almost_equal(self.bdg_h.conj().transpose(), self.bdg_h)
-        if verbose:
-            print("Time to add diagonal: " + str(perf_counter() - start_t))
-
-    def add_hopping(self, term, pauli_index, pauli_indices, direction, verbose=False):
-        """
-
-        :param term:
-        :param pauli_index:
-        :param pauli_indices:
-        :param direction:
-        :param verbose:
-        :return:
+        :param ribbon_dir: False to have open boundaries, "x" or "y" for a x-extended/y-extended ribbon geometry,
+            "xy" for closed boundaries
         """
         start_t = perf_counter()
         on_site_term = term * kron([paulis[pauli_indices[dof]] for dof in self.dofs])
@@ -315,7 +267,8 @@ class Lattice:
         else:
             cmap = "binary"
         plt.imshow(probs, cmap=cmap)
-        plt.title("Spatial probability distribution (%dx%d lattice)" %(self.L, self.L))
+        plt.title("Spatial probability distribution (%dx%d lattice), energy = %f"
+                  %(self.L, self.L, self.eigenvalues[i]))
         plt.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
         plt.colorbar()
         plt.show()
