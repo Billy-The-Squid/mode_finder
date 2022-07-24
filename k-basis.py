@@ -3,15 +3,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.ticker as tck
 
-L = 50
+L = 100
 
 def make_h(k_x, k_y, new_values={}):
     if not new_values:
-        epsilon_0 = 0.5
-        m_0 = -0.8
-        m_1 = -1.4
-        v = 0.3
-        delta = 0.6
+        epsilon_0 = 0.3
+        m_0 = -1.8
+        m_1 = 1.4
+        v = 0
+        delta = 0
     else:
         epsilon_0 = new_values["epsilon_0"]
         m_0 = new_values["m_0"]
@@ -64,13 +64,21 @@ def main():
 
     # Plot bands
     plot_points = np.vstack(points)
-    plt.plot(plot_points[:, 0]/np.pi, plot_points[:, 2], ".")
+    plt.plot(plot_points[:, 0]/np.pi, plot_points[:, 2], ".", color="grey")
     plt.title("Band structure (%dx%d lattice), $\kappa=%d$" %(L, L, round(sys_kappa.real)))
     plt.xlabel("Crystal momentum $k_x$")
     plt.ylabel("Energy eigenvalue")
     axes = plt.figure(num=1).get_axes()[0]
     axes.xaxis.set_major_formatter(tck.FormatStrFormatter('%g $\\frac{\pi}{a}$'))
     axes.xaxis.set_major_locator(tck.MultipleLocator(base=1/2))
+    making_figure = False
+    if making_figure:
+        fermi_level = -0.4
+        plt.axhline(fermi_level, color="grey", linestyle="--", label="$\\varespilon_0$")
+        plt.text(1, fermi_level + 0.1, "μ")
+        filled_indices = np.where(plot_points[:, 2] <= fermi_level)
+        filled = plot_points[filled_indices]
+        plt.plot(filled[:, 0]/np.pi, filled[:, 2], ".", color="black")
     plt.show()
 
     # # Try to plot 3D
@@ -136,6 +144,29 @@ def kappa(new_values={}):
     return kappa
 
 
+def kappa_2(new_values={}):
+    kappa = 0
+    inversion = kron([paulis[0], paulis[3]])
+    for x, y in [(0, 0), (0, 1), (1, 0), (1, 1)]:
+        k_x = x * np.pi
+        k_y = y * np.pi
+        h_k = make_h(k_x, k_y, new_values=new_values)
+
+        vals, vecs = np.linalg.eigh(h_k[:4, :4])
+        indices = np.argsort(vals)
+        vals = vals[indices]
+        vecs = vecs[:, indices]
+
+        zero_point = np.searchsorted(vals, 0)
+
+        for i in range(zero_point):
+            vec = vecs[:, i]
+            inverted = np.dot(inversion, vec)
+            e_val = np.vdot(vec, inverted)
+            kappa += e_val
+    return kappa / 2
+
+
 def scan_parameters(epsilon_0, v, delta):
     m_0s = np.arange(-2, 2, 0.1)
     m_1s = np.arange(-2, 2, 0.1)
@@ -143,15 +174,15 @@ def scan_parameters(epsilon_0, v, delta):
     kappas = np.zeros(m_0s.shape, dtype=float)
     for i in range(m_0s.shape[0]):
         for j in range(m_0s.shape[1]):
-            kappas[i, j] = kappa(new_values={
+            kappas[i, j] = kappa_2(new_values={
                 "epsilon_0": epsilon_0,
                 "m_0": m_0s[i, j],
                 "m_1": m_1s[i, j],
                 "v": v,
                 "delta": delta
             }).real
-    plt.pcolormesh(m_0s, m_1s, kappas, cmap="Set1")
-    plt.title("$\\varepsilon_0 = %f, v = %f, \Delta = %f$" %(epsilon_0, v, delta))
+    plt.pcolormesh(m_0s, m_1s, kappas, cmap="Greys")  # cmap="Set1")
+    plt.title("$\\varepsilon_0 = %.2f, v = %.2f, \Delta = %.2f$" %(epsilon_0, v, delta))
     plt.colorbar()
     plt.xlabel("$m_0$")
     plt.ylabel("$m_1$")
@@ -160,4 +191,4 @@ def scan_parameters(epsilon_0, v, delta):
 
 if __name__ == "__main__":
     main()
-    # scan_parameters(0.2, 0.9, 0.1)
+    # scan_parameters(0.9, 0.9, 0.1)
