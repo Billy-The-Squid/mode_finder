@@ -6,7 +6,7 @@ from lattice import *
 from time import perf_counter
 
 
-def setup_system(L, epsilon_0, m_0, m_1, v, delta, verbose=False):
+def setup_system(L, epsilon_0, m_0, m_1, v, delta, verbose=False, ribbon_dir=False):
     """
     Sets up the system and returns the lattice.Lattice
     :param L:
@@ -20,7 +20,7 @@ def setup_system(L, epsilon_0, m_0, m_1, v, delta, verbose=False):
     """
     # Create the matrix
     total_init = perf_counter()
-    latt = Lattice(L, {"s": ("up", "down"), "rho": ("s", "p-")})
+    latt = Lattice(L, {"s": ("up", "down"), "rho": ("s", "p-")}, ribbon_dir=ribbon_dir)
     if verbose:
         print("Time to create matrix: " + str(perf_counter() - total_init))
 

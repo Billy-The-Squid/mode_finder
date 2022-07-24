@@ -133,7 +133,7 @@ class Lattice:
         if verbose:
             print("Time to add hopping term: " + str(perf_counter() - start_t))
 
-    def add_hopping(self, term, pauli_index, pauli_indices, direction, verbose=False, ribbon_dir=False):
+    def add_hopping(self, term, pauli_index, pauli_indices, direction, verbose=False):
         """
         Adds a c_x c_{x+-1} term to the matrix. Preserves Hermiticity but will not add the opposite-direction hopping
             term if pauli_index is 1 or 2.
@@ -268,7 +268,7 @@ class Lattice:
             cmap = "binary"
         plt.imshow(probs, cmap=cmap)
         plt.title("Spatial probability distribution (%dx%d lattice), energy = %f"
-                  %(self.L, self.L, self.eigenvalues[i]))
+                  %(self.L, self.L, self.eigenvalues[index]))
         plt.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
         plt.colorbar()
         plt.show()
@@ -401,7 +401,7 @@ class Lattice:
             # zero = np.searchsorted(spectrum, 0)
             # xs = xs - zero
         plt.plot(xs, spectrum, ".")
-        plt.axhline(0, color="lightgrey")
+        plt.axhline(0, color="lightgrey", linestyle="--")
         plt.show()
 
         # # Do it fancy
@@ -415,14 +415,14 @@ def main():
     # Initialize the system
     L = 3
     dofs = {"sub": ("A", "B")}
-    latt = Lattice(L, dofs)
+    latt = Lattice(L, dofs, ribbon_dir="y")
 
     # # Add an on-site term
     latt.add_diagonal(-2, 3, {"sub": 1})
 
     # Add a hopping term
-    latt.add_hopping(1j, 0, {"sub": 0}, 0)
-    latt.dislocation(1, 1, 0, site_cost=10)
+    latt.add_hopping(1j, 0, {"sub": 0}, 1)
+    # latt.dislocation(1, 1, 0, site_cost=10)
 
     latt.calculate_eigenvalues()
 
