@@ -33,6 +33,9 @@ def make_h(k_x, k_y, new_values={}):
 
 def main():
     sys_kappa = kappa()
+    sys_kappa2 = kappa_2()
+    if sys_kappa2 != sys_kappa:
+        print("Warning: kappas differ.")
 
     # Iterate through the k vals
     delta_k = 2 * np.pi / L
@@ -190,5 +193,5 @@ def scan_parameters(epsilon_0, v, delta):
 
 
 if __name__ == "__main__":
-    main()
-    # scan_parameters(0.9, 0.9, 0.1)
+    # main()
+    scan_parameters(0.5, 0.4, 0.15)
