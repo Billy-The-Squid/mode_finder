@@ -38,7 +38,7 @@ class Lattice:
     L: The length of one edge of the lattice
     dofs: A list of strings. A list of the degrees of freedom (e.g., spin, orbital) for all sites.
     dofs_dict: A dictionary mapping strings to lists of strings. Maps the names of degrees of freedom to the possible
-        values of that DoF.
+        values of that DoF. Note: This does not currently support more than two options for a DoF.
     bdg_h: A numpy array. The BdG Hamiltonian for the system. Each row/column corresponds to a site on the lattice, an
         electron or hole, and a possible combination of parameters.
     eigenvalues: A numpy array of floats. The set of eigenvalues of the system, sorted from least magnitude to

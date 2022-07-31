@@ -6,6 +6,9 @@ from k_basis import *
 
 
 def scan_m0_m1():
+    """
+    Scans a range of m_0 and m_1 values and plots spectrum or closest-to-zero eigenstate for each.
+    """
     epsilon_0 = 0.5
     v = 0.4
     delta = 0.15
@@ -54,7 +57,10 @@ def scan_m0_m1():
             # plt.show()
 
 
-def scan_lattice_size(epsilon_0, m_0, m_1, v, delta, max_len = 7):
+def scan_lattice_size(epsilon_0, m_0, m_1, v, delta, max_len=7):
+    """
+    Scans a range of lattice sizes and plots the energy of the closest-to-zero energy eigenvalue for each.
+    """
     latts = list((0,))
     eigenvalues = list()
     for i in range(1, max_len):

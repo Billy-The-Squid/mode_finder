@@ -43,7 +43,8 @@ def make_h(k_x, k_y, new_values={}):
 
 def main():
     """
-    Generates a 2D plot of the
+    Generates a 2D plot of the band structure for the Hamiltonian, given the parameters listed in `make_h`. Plots
+        energy eigenvalues against k_x, assuming k_y = 0.
     """
     sys_kappa = kappa()
     sys_kappa2 = kappa_2()
@@ -106,34 +107,14 @@ def main():
     print("Kappa: " + str(sys_kappa))
 
 
-def dirac_point():
-    """Not very intelligent"""
-    # Iterate through the k vals
-    delta_k = 2 * np.pi / L
-    points = []
-    normal_state_only = True
-    for n in range(15, 35):
-        k_x = 0  # n * delta_k
-        if k_x > np.pi:
-            k_x -= 2 * np.pi
-        k_y = n * delta_k
-        if k_y > np.pi:
-            k_y -= 2 * np.pi
-        h_k = make_h(k_x, k_y)
-        if normal_state_only:
-            e_vals = np.linalg.eigvals(h_k[0:4, 0:4])
-        else:
-            e_vals = np.linalg.eigvals(h_k)
-        for val in e_vals:
-            points.append(np.array([k_y, val]))
-
-    # Plot bands
-    plot_points = np.vstack(points)
-    plt.plot(plot_points[:, 0], plot_points[:, 1], ".")
-    plt.show()
-
-
 def kappa(new_values={}):
+    """
+    Calculates the kappa value given the set of parameters. Does not reduce the value mod 4.
+
+    :param new_values: Either an empty dictionary or one containing values associated with the keys "epsilon_0", "m_0",
+        "m_1", "v", and "delta".
+    :return: An integer between -4 and 4.
+    """
     inversion = kron([paulis[3], paulis[0], paulis[3]])
     kappa = 0
     # Iterate over the points
@@ -161,6 +142,13 @@ def kappa(new_values={}):
 
 
 def kappa_2(new_values={}):
+    """
+    Calculates the kappa value given the set of parameters. Does not reduce the value mod 4. Alternative to `kappa`
+
+    :param new_values: Either an empty dictionary or one containing values associated with the keys "epsilon_0", "m_0",
+        "m_1", "v", and "delta".
+    :return: An integer between -4 and 4.
+    """
     kappa = 0
     inversion = kron([paulis[0], paulis[3]])
     for x, y in [(0, 0), (0, 1), (1, 0), (1, 1)]:
@@ -184,6 +172,10 @@ def kappa_2(new_values={}):
 
 
 def scan_parameters(epsilon_0, v, delta):
+    """
+    Scans a range of m_0 and m_1 values at the given values of epsilon_0, v, and delta. Plots the values of kappa in
+        that domain.
+    """
     m_0s = np.arange(-2, 2.01, 0.01)
     m_1s = np.arange(-2, 2.01, 0.01)
     m_0s, m_1s = np.meshgrid(m_0s, m_1s)
