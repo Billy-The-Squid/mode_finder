@@ -14,6 +14,12 @@ paulis = [
 
 
 def kron(arg_list):
+    """
+    A Kronecker product of an arbitrary number of matrices.
+
+    :param arg_list: A list of numpy arrays.
+    :return: A numpy array.
+    """
     if len(arg_list) < 1:
         raise Exception("At least one argument must be provided.")
     if len(arg_list) == 1:
@@ -26,6 +32,24 @@ def kron(arg_list):
 
 
 class Lattice:
+    """
+    A class that sets up a square crystal lattice with superconducting terms.
+
+    L: The length of one edge of the lattice
+    dofs: A list of strings. A list of the degrees of freedom (e.g., spin, orbital) for all sites.
+    dofs_dict: A dictionary mapping strings to lists of strings. Maps the names of degrees of freedom to the possible
+        values of that DoF.
+    bdg_h: A numpy array. The BdG Hamiltonian for the system. Each row/column corresponds to a site on the lattice, an
+        electron or hole, and a possible combination of parameters.
+    eigenvalues: A numpy array of floats. The set of eigenvalues of the system, sorted from least magnitude to
+        greatest.
+    eigenvectors: A 2D numpy array of floats. Each column corresponds to an eigenvector of bdg_h, and columns are
+        sorted in the same order as eigenvalues.
+    removed_site_count: If a dislocation has been introduced into the system, tracks the number of sites that have been
+        removed from the lattice.
+    ribbon_dir: False, "x", "y", or "xy". Indicates the direction(s) in which the system has periodic boundary
+        conditions.
+    """
     def __init__(self, L: int, dofs: dict, ribbon_dir=False):
         """
         Creates an empty matrix representing the BdG Hamiltonian (in r-basis) for the system.
@@ -36,7 +60,7 @@ class Lattice:
             (as strings) mapping to lists of possible values. The dictionary should not be empty and
             each list should have more than one entry.
         :param ribbon_dir: False to have open boundaries, "x" or "y" for a x-extended/y-extended ribbon geometry,
-            "xy" for closed boundaries
+            "xy" for closed boundaries.
         """
         # Some important variables
         self.L = L
@@ -55,18 +79,21 @@ class Lattice:
         self.eigenvalues = None
         self._eigen_up_to_date = False
         self.removed_site_count = 0
-        self.sparse_h = None
+        # Stores a sparse form of the Hamiltonian to reduce redundant computation
+        self._sparse_h = None
+        # A list of site costs in a dislocated matrix.
         self._site_costs = []
         self.ribbon_dir = ribbon_dir
 
     def get_index(self, x: int, y: int, dofs: dict, particle=True):
         """
         Returns the integer index of the specified site with the specified degree of freedom. (x,y) = (0,0) is in a
-            corner.
+            corner. The returned index can be used to access a row or column of bdg_h.
         :param x: The x coordinate of the site.
         :param y: The y coordinate of the site.
-        :param dofs: A dictionary mapping the strings labeling the dofs to the index of their value in the dof list.
-        :param particle:
+        :param dofs: A dictionary mapping the strings labeling the dofs to the index of their value in the dof_dict
+            list.
+        :param particle: True for the particle part of the matrix, false for the hole part.
         :return: The integer index of the site specified.
         """
         if self.ribbon_dir in [False, "y"] and (x < 0 or x >= self.L):
@@ -104,12 +131,19 @@ class Lattice:
 
     def add_diagonal(self, term, pauli_index, pauli_indices, verbose=False):
         """
+        Adds diagonal terms (x = y) to bdg_h.
 
-        :param term:
-        :param pauli_index:
-        :param pauli_indices:
-        :return:
+        :param term: The term to be added at each component of the matrix. Will be multiplied by the relevant Pauli
+            matrices.
+        :param pauli_index: Integer (0, 1, 2, 3). The index of the Pauli matrix that determines the contributions in
+            each block of the BdG Hamiltonian. E.g., 2 will only insert `term` in the upper right (multiplied by -1j)
+            and lower left (multiplied by 1j) blocks of bdg_h.
+        :param pauli_indices: Dictionary mapping strings (from the dof list) to integers between 0 and 3. Associates
+            each DoF to a Pauli matrix that determines whether (and how) different values of the DoF interact.
+        :param verbose: Boolean. True prints the amount of time required to add the terms.
         """
+        self._eigen_up_to_date = False
+        self._sparse_h = None
         start_t = perf_counter()
         # Calculate what each block will look like
         on_site_term = term * kron([paulis[pauli_indices[dof]] for dof in self.dofs])
@@ -137,14 +171,21 @@ class Lattice:
         """
         Adds a c_x c_{x+-1} term to the matrix. Preserves Hermiticity but will not add the opposite-direction hopping
             term if pauli_index is 1 or 2.
-        :param term:
-        :param pauli_index:
-        :param pauli_indices:
+        :param term: The term to be added at each component of the matrix. Will be multiplied by the relevant Pauli
+            matrices.
+        :param pauli_index: Integer (0, 1, 2, 3). The index of the Pauli matrix that determines the contributions in
+            each block of the BdG Hamiltonian. E.g., 2 will only insert `term` in the upper right (multiplied by -1j)
+            and lower left (multiplied by 1j) blocks of bdg_h.
+        :param pauli_indices: Dictionary mapping strings (from the dof list) to integers between 0 and 3. Associates
+            each DoF to a Pauli matrix that determines whether (and how) different values of the DoF interact.
         :param direction: 0 for x->x+1, 1 for y->y+1, 2 for x->x-1, 3 for y->y-1
-        :param ribbon_dir: False to have open boundaries, "x" or "y" for a x-extended/y-extended ribbon geometry,
-            "xy" for closed boundaries
+        :param verbose: Boolean. True prints the amount of time required to add the terms.
         """
+        self._eigen_up_to_date = False
+        self._sparse_h = None
+
         start_t = perf_counter()
+        # The blocks to insert at each site.
         on_site_term = term * kron([paulis[pauli_indices[dof]] for dof in self.dofs])
         if pauli_index == 2:
             on_site_term = -1j * on_site_term
@@ -157,10 +198,12 @@ class Lattice:
         # Iterate over the sites
         for x in range(self.L):
             for y in range(self.L):
+                # Indices for all blocks
                 site_i = [
                     self.get_index(x, y, init, particle=True),
                     self.get_index(x, y, init, particle=False)
                 ]
+                # Check for edges/wrapping
                 try:
                     neighbor_i = [
                         self.get_index(x + dirs[direction][0], y + dirs[direction][1], init, particle=True),
@@ -194,8 +237,8 @@ class Lattice:
 
     def get_block(self, index):
         """
-        Returns a block of the matrix indicated by the index. 0 gives the c*c terms, 1 the c*c* terms, 2 the cc terms,
-            and 3 the cc* terms.
+        Returns view of a block of the matrix indicated by the index. 0 gives the c*c terms, 1 the c*c* terms, 2 the cc
+            terms, and 3 the cc* terms.
         :param index: An integer between 0 and 3, inclusive.
         :return: A view of the bdg_h array in the specified block. Width will be half the width of the full Hamiltonian.
         """
@@ -207,8 +250,9 @@ class Lattice:
     def calculate_eigenvalues(self, verbose=False):
         """
         If the eigenvalues or eigenvectors are not up-to-date, recalculates them and sorts them from least magnitude to
-        greatest, stored in lattice.eigenvalues and lattice.eigenvectors.
-        :return:
+        greatest, stored in lattice.eigenvalues and lattice.eigenvectors. Ridiculously inefficient for large lattice.L.
+
+        :param verbose: Boolean. True prints the amount of time required to add the terms.
         """
         init = perf_counter()
         if not (self._eigen_up_to_date is True):
@@ -222,19 +266,23 @@ class Lattice:
 
     def calculate_eigenvalues_sparse(self, count, verbose=False):
         """
+        If the eigenvalues or eigenvectors are not up-to-date, recalculates some of them and sorts them from least
+            magnitude to greatest, stored in lattice.eigenvalues and lattice.eigenvectors.
 
+        :param count: The number of eigenvalues to calculate. Finds closest-to-zero first.
+        :param verbose: Boolean. True prints the amount of time required to add the terms.
         """
         if count >= self.bdg_h.shape[0] - 1:
             self.calculate_eigenvalues()
             return
         init = perf_counter()
         if self._eigen_up_to_date is False or self._eigen_up_to_date < count:
-            if self.sparse_h is None:
-                self.sparse_h = spr.csr_matrix(self.bdg_h)
+            if self._sparse_h is None:
+                self._sparse_h = spr.csr_matrix(self.bdg_h)
             if verbose:
                 print("Time to generate sparse matrix: " + str(perf_counter() - init))
                 next = perf_counter()
-            vals, vecs = eigsh(self.sparse_h, k=count, sigma=0, which="LM")
+            vals, vecs = eigsh(self._sparse_h, k=count, sigma=0, which="LM")
             if verbose:
                 print("Time to find some eigenvalues: " + str(perf_counter() - next))
             indices = np.argsort(vals ** 2)
@@ -244,10 +292,12 @@ class Lattice:
         if verbose:
             print("Total time to calculate some eigenvalues: " + str(perf_counter() - init))
 
-    def plot_eigenvector(self, index, color=False):
+    def plot_eigenvector(self, index, color=True):
         """
         Plots the probability density of the wavefunction indicated by the eigenvector at the specified index.
+
         :param index: The index of the eigenvector in lattice.eigenvectors.
+        :param color: Boolean. True to render the plot in color, False for grayscale.
         """
         if self._eigen_up_to_date is False or self._eigen_up_to_date < index:
             print("Eigenvectors have not been computed to this index.")
@@ -278,13 +328,19 @@ class Lattice:
         Creates a dislocation starting at the specified point and continuing in the specified direction by removing the
             sites from that site and continuing in that direction. The sites on either side of the missing sites will
             have hopping terms to each other.
-        This should only be used once in a lattice, and not before adding additional hopping or on-site terms.
-        :param x_start:
-        :param y_start:
-        :param direc: 0 for +x, 1 for +y, 2 for -x, 3 for -y
+        This should only be used once in a lattice, and never before adding additional hopping or on-site terms.
+
+        :param x_start: Int. The x coordinate of the starting point.
+        :param y_start: Int. The y coordinate of the starting point.
+        :param direc: 0 for +x, 1 for +y, 2 for -x, 3 for -y. The direction in which the dislocation will propagate
+            from the starting point.
+        :param site_cost: Real Float. The value assigned to on-site terms. Recommended to be larger in magnitude than
+            any other eigenvalue could realistically be, so as to separate the true spectrum of the system from the
+            vestigal eigenstates that reside only on removed sites.
         """
         # NOTE: This code will NOT generalize if next-nearest-neighbor terms are introduced.
         self._eigen_up_to_date = False
+        self._sparse_h = None
 
         # Establish the direction to procede
         dirs = np.array([
@@ -383,6 +439,11 @@ class Lattice:
         self._site_costs.append(site_cost)
 
     def plot_spectrum(self, lazy=False):
+        """
+        Plots the spectrum of the eigenvalues calculated so far.
+
+        :param lazy: Boolean. If True, the plot has no x variation.
+        """
         if self._eigen_up_to_date is False:
             print("Eigenvalues have not been computed.")
             return

@@ -8,15 +8,10 @@ from time import perf_counter
 
 def setup_system(L, epsilon_0, m_0, m_1, v, delta, verbose=False, ribbon_dir=False):
     """
-    Sets up the system and returns the lattice.Lattice
-    :param L:
-    :param epsilon_0:
-    :param m_0:
-    :param m_1:
-    :param v:
-    :param delta:
-    :param verbose:
-    :return:
+    Sets up the minimal-model system and returns the Lattice object.
+    :param L: Int. The length of one edge of the lattice.
+    :param verbose: Boolean. True to print the time required to generate each component and the total time.
+    :return: The Lattice object.
     """
     # Create the matrix
     total_init = perf_counter()

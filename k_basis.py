@@ -5,13 +5,23 @@ import matplotlib.ticker as tck
 
 L = 100
 
+
 def make_h(k_x, k_y, new_values={}):
+    """
+    Makes a Hamiltonian for the system with the given parameters at the specified k value.
+
+    :param k_x: Float. The x component of k.
+    :param k_y: Float. The y component of k.
+    :param new_values: Either an empty dictionary or one containing values associated with the keys "epsilon_0", "m_0",
+        "m_1", "v", and "delta".
+    :return: The BdG Hamiltonian, an 8x8 numpy array.
+    """
     if not new_values:
         epsilon_0 = 0.3
         m_0 = -1.8
         m_1 = 1.4
-        v = 0
-        delta = 0
+        v = 0.1
+        delta = 0.3
     else:
         epsilon_0 = new_values["epsilon_0"]
         m_0 = new_values["m_0"]
@@ -32,6 +42,9 @@ def make_h(k_x, k_y, new_values={}):
 
 
 def main():
+    """
+    Generates a 2D plot of the
+    """
     sys_kappa = kappa()
     sys_kappa2 = kappa_2()
     if sys_kappa2 != sys_kappa:
@@ -67,21 +80,21 @@ def main():
 
     # Plot bands
     plot_points = np.vstack(points)
-    plt.plot(plot_points[:, 0]/np.pi, plot_points[:, 2], ".", color="grey")
+    plt.plot(plot_points[:, 0]/np.pi, plot_points[:, 2], ".")  # , color="grey")
     plt.title("Band structure (%dx%d lattice), $\kappa=%d$" %(L, L, round(sys_kappa.real)))
     plt.xlabel("Crystal momentum $k_x$")
     plt.ylabel("Energy eigenvalue")
     axes = plt.figure(num=1).get_axes()[0]
     axes.xaxis.set_major_formatter(tck.FormatStrFormatter('%g $\\frac{\pi}{a}$'))
     axes.xaxis.set_major_locator(tck.MultipleLocator(base=1/2))
-    making_figure = False
+    making_figure = True
     if making_figure:
         fermi_level = -0.4
         plt.axhline(fermi_level, color="grey", linestyle="--", label="$\\varespilon_0$")
         plt.text(1, fermi_level + 0.1, "μ")
         filled_indices = np.where(plot_points[:, 2] <= fermi_level)
         filled = plot_points[filled_indices]
-        plt.plot(filled[:, 0]/np.pi, filled[:, 2], ".", color="black")
+        plt.plot(filled[:, 0]/np.pi, filled[:, 2], ".", color="green")
     plt.show()
 
     # # Try to plot 3D
@@ -171,8 +184,8 @@ def kappa_2(new_values={}):
 
 
 def scan_parameters(epsilon_0, v, delta):
-    m_0s = np.arange(-2, 2, 0.1)
-    m_1s = np.arange(-2, 2, 0.1)
+    m_0s = np.arange(-2, 2.01, 0.01)
+    m_1s = np.arange(-2, 2.01, 0.01)
     m_0s, m_1s = np.meshgrid(m_0s, m_1s)
     kappas = np.zeros(m_0s.shape, dtype=float)
     for i in range(m_0s.shape[0]):
@@ -184,8 +197,8 @@ def scan_parameters(epsilon_0, v, delta):
                 "v": v,
                 "delta": delta
             }).real
-    plt.pcolormesh(m_0s, m_1s, kappas, cmap="Greys")  # cmap="Set1")
-    plt.title("$\\varepsilon_0 = %.2f, v = %.2f, \Delta = %.2f$" %(epsilon_0, v, delta))
+    plt.pcolormesh(m_0s, m_1s, kappas, cmap="Set1")  # cmap="Greys")
+    plt.title("$\\varepsilon_0 = %.2f$" %epsilon_0)
     plt.colorbar()
     plt.xlabel("$m_0$")
     plt.ylabel("$m_1$")

@@ -32,16 +32,16 @@ def scan_m0_m1():
                 "delta": delta
             }).real
 
-            latt = setup_system(50, epsilon_0, m_0s[i, j], m_1s[i, j], v, delta)
-            latt_neg = setup_system(50, epsilon_0, -m_0s[i, j], m_1s[i, j], v, delta)
-            latt.dislocation(30, 25, 0)
-            latt_neg.dislocation(30, 25, 0)
+            latt = setup_system(40, epsilon_0, m_0s[i, j], m_1s[i, j], v, delta)
+            # latt_neg = setup_system(50, epsilon_0, -m_0s[i, j], m_1s[i, j], v, delta)
+            # latt.dislocation(30, 25, 0)
+            # latt_neg.dislocation(30, 25, 0)
             latt.calculate_eigenvalues_sparse(2)
-            latt_neg.calculate_eigenvalues_sparse(2)
+            # latt_neg.calculate_eigenvalues_sparse(2)
 
             print("Kappa: " + str(round(kappa_1)))
             latt.plot_eigenvector(0, color=True)
-            latt_neg.plot_eigenvector(0, color=True)
+            # latt_neg.plot_eigenvector(0, color=True)
 
             # spectrum = np.sort(latt.eigenvalues)
             # spectrum_neg = np.sort(latt_neg.eigenvalues)
@@ -81,6 +81,9 @@ def scan_lattice_size(epsilon_0, m_0, m_1, v, delta, max_len = 7):
     for i in range(1, max_len):
         latts[i].plot_eigenvector(0, color=True)
 
+    return xs, eigenvalues
+
 
 if __name__ == "__main__":
-    scan_lattice_size(0.5, 1, 0.8, 0.4, 0.15)
+    scan_m0_m1()
+    # scan_lattice_size(0.5, 1, 0.8, 0.4, 0.15)
